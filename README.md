@@ -25,5 +25,8 @@ Installation from GitHub:
 
 Main changes:
 
+    19apr2021 (version 1.0.1):
+    - option -fd(strict)- added
+    
     17apr2021 (version 1.0.0):
     - xtrobreg released on GitHub

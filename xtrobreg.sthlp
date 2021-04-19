@@ -1,5 +1,5 @@
 {smcl}
-{* 17apr2021}{...}
+{* 19apr2021}{...}
 {hi:help xtrobreg}{...}
 {right:{browse "http://github.com/benjann/xtrobreg/"}}
 {hline}
@@ -48,7 +48,7 @@
 {synoptset 21}{...}
 {marker opts}{col 5}{it:{help xtrobreg##options:options}}{col 28}description
 {synoptline}
-{synopt :{opt fd}}use first-differences rather than pairwise-differences estimator
+{synopt :{opt fd}[{cmd:(strict)}]}use first differences rather than pairwise differences
     {p_end}
 {synopt :{opt gmin(#)}}required minimum number of observations per group
     {p_end}
@@ -64,9 +64,7 @@
     {p_end}
 {synoptline}
 {pstd}
-    A panel variable must be set; use {helpb xtset}. If there are groups with
-    more than two observations and option {cmd:fd} is specified, a time variable
-    must also be set.
+    A panel variable (and, if {cmd:fd}, a time variable) must be set; use {helpb xtset}.
     {p_end}
 {pstd}
     {cmd:pweight}s are allowed; see {help weight}. Weights must be constant within
@@ -89,7 +87,7 @@
 
 {marker tropts}{col 5}{help xtrobreg##conv_options:{it:convert_options}}{col 28}description
 {synoptline}
-{synopt :{opt fd}}generate first differences instead of pairwise differences
+{synopt :{opt fd}[{cmd:(strict)}]}generate first differences rather than pairwise differences
     {p_end}
 {synopt :{opt gmin(#)}}required minimum number of observations per group
     {p_end}
@@ -133,9 +131,23 @@
 {dlgtab:xtrobreg}
 
 {phang}
-    {opt fd} requests that the first-differences estimator be computed. The default is to compute the
-    pairwise-differences estimator. For least-squares regression, the pairwise-differences estimator is equal to the
+    {opt fd}[{cmd:(strict)}] requests that the first-differences estimator be
+    computed. The default is to compute the pairwise-differences estimator. For
+    least-squares regression, the pairwise-differences estimator is equal to the
     fixed-effects estimator.
+
+{pmore}
+    Specify {cmd:fd} without argument to use all first differences irrespective
+    of the amount of time between observations.
+
+{pmore}
+    Specify {cmd:fd(strict)} to consider only
+    differences between observations that are exactly {it:delta} units apart,
+    where {it:delta} is the period between observations as set by option
+    {cmd:delta()} in {helpb xtset}. Observations that have no lag or lead
+    according this definition will be dropped from the estimation sample and
+    excluded from the calculation of group sizes. Use {cmd:fd(strict)} if you
+    want to mimic the behavior of Stata's time-series operator {helpb tsvarlist:D}.
 
 {phang}
     {opt gmin(#)}, with #>=2, specifies the required minimum number of
@@ -188,8 +200,19 @@
 {dlgtab:convert}
 
 {phang}
-    {opt fd} generated first differences. The default is to generate pairwise
+    {opt fd}[{cmd:(strict)}] generates first differences. The default is to generate pairwise
     differences.
+
+{pmore}
+    Specify {cmd:fd} without argument to generate all first differences irrespective
+    of the amount of time between observations.
+
+{pmore}
+    Specify {cmd:fd(strict)} to generate only
+    differences between observations that are exactly {it:delta} units apart,
+    where {it:delta} is the period between observations as set by option
+    {cmd:delta()} in {helpb xtset}. Use {cmd:fd(strict)} if you want to mimic the behavior of
+    Stata's time-series operator {helpb tsvarlist:D}.
 
 {phang}
     {opt gmin(#)}, with #>=2, specifies the required minimum number of
@@ -253,7 +276,7 @@
 {synopt:{cmd:e(predict)}}{cmd:xtrobreg predict}{p_end}
 {synopt:{cmd:e(ivar)}}name of panel variable{p_end}
 {synopt:{cmd:e(tvar)}}name of time variable (if set){p_end}
-{synopt:{cmd:e(model)}}{cmd:pd} or {cmd:fd}{p_end}
+{synopt:{cmd:e(model)}}{cmd:pd}, {cmd:fd}, or {cmd:fd(strict)}{p_end}
 
 {pstd}
     {cmd:xtrobreg convert} saves the following results in {cmd:r()}.
@@ -269,7 +292,7 @@
 {synopt:{cmd:r(ivar)}}name of panel variable{p_end}
 {synopt:{cmd:e(tvar)}}name of (differenced) time variable (if set){p_end}
 {synopt:{cmd:r(wvar)}}name of weights variable{p_end}
-{synopt:{cmd:e(model)}}{cmd:pd} or {cmd:fd}{p_end}
+{synopt:{cmd:e(model)}}{cmd:pd}, {cmd:fd}, or {cmd:fd(strict)}{p_end}
 
 
 {marker refrerences}{...}
@@ -295,7 +318,7 @@
     Thanks for citing this software as follows:
 
 {pmore}
-    Jann, B., V. Verardi (2021). robreg: Stata module providing pairwise-differences and
+    Jann, B., V. Verardi (2021). xtrobreg: Stata module providing pairwise-differences and
     first-differences robust regression estimators. Available from
     {browse "http://github.com/benjann/xtrobreg/"}.
 
