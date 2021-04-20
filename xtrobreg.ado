@@ -1,4 +1,4 @@
-*! version 1.0.1  19apr2021  Ben Jann
+*! version 1.0.2  19apr2021  Ben Jann
 
 capt findfile robreg.ado
 if _rc {
@@ -127,17 +127,15 @@ program Predict
 end
 
 program Convert, rclass
-    syntax varlist(numeric) [if] [in] [pw] [, pd fd FD2(str) ///
+    syntax varlist(numeric) [if] [in] [pw] [, pd fd ///
         Wvar(name) keep(varlist) clear gmin(numlist int max=1 >=2) ///
         gmax(numlist int max=1 >=2 miss) ]
-    parse_fd2, `fd2'
     local model `pd' `fd'
     if "`model'"=="" local model pd
     if `:list sizeof model'>1 {
         di as err "{bf:fd} and {bf:pd} not both allowed"
         exit 198
     }
-    if "`fd_strict'"!="" local model "`model'(strict)"
     if "`wvar'"!="" {
         confirm new variable `wvar'
         local user_wvar `wvar'
@@ -152,15 +150,15 @@ program Convert, rclass
     preserve
     
     // panel setup
-    tempname touse nvar last ltype g_avg wvar
+    tempname touse nvar last g_avg wvar
     Panelsetup `varlist' `if' `in' [`weight'`exp'], touse(`touse') ///
-        nvar(`nvar') last(`last') ltype(`ltype') g_avg(`g_avg') ///
-        model(`model') wvar(`wvar') keep(`keep') gmin(`gmin') gmax(`gmax')
+            nvar(`nvar') last(`last') g_avg(`g_avg') ///
+            model(`model') wvar(`wvar') keep(`keep') gmin(`gmin') gmax(`gmax')
     
     // transform data
     local varlist: list varlist | tvar
     Transform `varlist', touse(`touse') ivar(`ivar') nvar(`nvar') ///
-        last(`last') ltype(`ltype') model(`model') wvar(`wvar') ///
+        last(`last') model(`model') wvar(`wvar') ///
         keep(`keep') g_min(`g_min') g_avg(`g_avg') g_max(`g_max') 
     
     // weights
@@ -201,16 +199,10 @@ program Convert, rclass
     restore, not
 end
 
-program parse_fd2
-    syntax [, strict ]
-    if "`strict'"!="" c_local fd fd
-    c_local fd_strict "`strict'"
-end
-
 program Estimate, eclass sortpreserve
     // syntax
     gettoken subcmd 0 : 0, parse(", ")
-    syntax varlist(min=2 numeric) [if] [in] [pw] [, pd fd FD2(str) ///
+    syntax varlist(min=2 numeric) [if] [in] [pw] [, pd fd ///
         gmin(numlist int max=1 >=2) gmax(numlist int max=1 >=2 miss) ///
         CLuster(varname) NOSE Level(passthru) all noHEADer NOTABle ///
         noCONStant nor2 /// will be ignored
@@ -219,20 +211,18 @@ program Estimate, eclass sortpreserve
     _get_eformopts, eformopts(`options') soptions allowed(__all__)
     local options `"`s(options)'"'
     c_local diopts `s(eform)' `level' `all' `header' `notable' `diopts'
-    parse_fd2, `fd2'
     local model `pd' `fd'
     if "`model'"=="" local model pd
     if `:list sizeof model'>1 {
         di as err "{bf:fd} and {bf:pd} not both allowed"
         exit 198
     }
-    if "`fd_strict'"!="" local model "`model'(strict)"
     if inlist(`"`subcmd'"',"lts","lqs","lms") local nose nose
     
     // panel setup
-    tempname touse nvar last ltype g_avg wvar
+    tempname touse nvar last g_avg wvar
     Panelsetup `varlist' `if' `in' [`weight'`exp'], touse(`touse') ///
-        nvar(`nvar') last(`last') ltype(`ltype') g_avg(`g_avg') ///
+        nvar(`nvar') last(`last') g_avg(`g_avg') ///
         model(`model') wvar(`wvar') gmin(`gmin') gmax(`gmax') keep(`cluster')
     _nobs `touse' [`weight'`exp']
     local N = r(N)
@@ -241,7 +231,7 @@ program Estimate, eclass sortpreserve
     if "`log'"=="" di as txt "converting data ..." _c
     preserve
     Transform `varlist', touse(`touse') ivar(`ivar') nvar(`nvar') ///
-        last(`last') ltype(`ltype') model(`model') wvar(`wvar') ///
+        last(`last') model(`model') wvar(`wvar') ///
         g_min(`g_min') g_avg(`g_avg') g_max(`g_max') keep(`cluster')
     if "`log'"=="" di as txt " done"
     capt confirm variable `wvar', exact
@@ -282,17 +272,15 @@ program Estimate, eclass sortpreserve
 end
 
 program Panelsetup
-    syntax varlist [if] [in] [pw], touse(str) Nvar(str) Last(str) ltype(str) ///
+    syntax varlist [if] [in] [pw], touse(str) Nvar(str) Last(str) ///
         g_avg(str) model(str) [ wvar(str) keep(str) gmin(str) gmax(str) ]
     if "`gmin'"=="" local gmin 2
     if "`gmax'"=="" local gmax .
     
     // xtset
-    tempname delta
     qui xtset
     local ivar "`r(panelvar)'"
     local tvar "`r(timevar)'"
-    scalar `delta' = r(tdelta)
     
     // sample, weights
     mark `touse' `if' `in' [`weight'`exp']
@@ -303,26 +291,6 @@ program Panelsetup
     
     // sort data
     sort `touse' `ivar' `tvar'
-    
-    // exclude observations without lag or lead if fd(strict)
-    if "`model'"=="fd(strict)" {
-        if "`tvar'"=="" {
-            di as err "{bf:fd} requires time variable to be set;" ///
-                " use {bf:xtset} {it:panelvar} {it:timevar}"
-            exit 459
-        }
-        by `touse' `ivar': ///
-            gen byte `ltype' = (`tvar'==(`tvar'[_n-1]+`delta'))*2 + /*
-                */ ((`tvar'+`delta')==`tvar'[_n+1]) if `touse'
-            // 1: has lead, 2: has lag: 3: has lag and lead; 0: else
-        capt assert (`ltype') if `touse'
-        if _rc==1 exit _rc
-        else if _rc {
-            qui replace `touse' = 0 if `ltype'==0
-            sort `touse' `ivar' `tvar'
-        }
-    }
-    else c_local ltype
     
     // compute panel sizes
     gen byte `nvar' = 0
@@ -348,7 +316,8 @@ program Panelsetup
     
     // checks
     if "`model'"=="fd" & "`tvar'"=="" & `g_max'>2 {
-        di as err "{bf:fd} requires time variable to be set;" ///
+        di as err "{bf:fd} requires time variable to be set (if" ///
+            " there are more then two observations per group);" ///
             " use {bf:xtset} {it:panelvar} {it:timevar}"
         exit 459
     }
@@ -372,7 +341,7 @@ end
 program Transform
     syntax varlist, touse(str) nvar(str) last(str) ivar(str) ///
         model(str) g_min(str) g_avg(str) g_max(str) ///
-        [ ltype(str) wvar(str) keep(str) ]
+        [ wvar(str) keep(str) ]
     capt confirm variable `wvar', exact
     if _rc==1      exit _rc
     else if _rc==0 local WVAR `wvar'
@@ -394,14 +363,14 @@ program Transform
     
     // drop irrelevant observations and variables
     qui keep if `touse'
-    keep `nvar' `last' `ivar' `ltype' `WVAR' `varlist' `keep'
+    keep `nvar' `last' `ivar' `WVAR' `varlist' `keep'
     
     // transform data
     recast double `varlist' // [diff might require other type]
     tempvar N
-    if "`model'"!="pd" {
+    if "`model'"=="fd" {
         gen `: type `nvar'' `N' = `nvar' - 1
-        mata: xtrobreg_transform(1 + ("`model'"=="fd(strict)"))
+        mata: xtrobreg_transform(1)
     }
     else {
         gen `: type `nvar'' `N' = `nvar'
@@ -427,14 +396,13 @@ mata set matastrict on
 void xtrobreg_transform(real scalar fd)
 {
     real rowvector xvars
-    real colvector n, ltype
+    real colvector n
     real matrix    X
     
     // get data
     n = st_data(., st_local("nvar"), st_local("last"))
     xvars = st_varindex(tokens(st_local("varlist")))
     X = st_data(., xvars)
-    if (fd==2) ltype = st_data(., st_local("ltype"))
     
     // expand dataset
     stata("qui keep if \`last'")
@@ -443,34 +411,8 @@ void xtrobreg_transform(real scalar fd)
     stata("sort \`ivar'")
     
     // generate pairwise differences
-    if   (fd==2) _transform_fdstrict(n, ltype, X, xvars)
-    else if (fd) _transform_fd(n, X, xvars)
-    else         _transform_pd(n, X, xvars)
-}
-
-void _transform_fdstrict(real colvector n, real colvector ltype, 
-    real matrix X, real rowvector xvars)
-{
-    real scalar    N, I, i, j, k
-    real colvector drop
-    real matrix    Y
-    pragma unset   Y
-    
-    N = rows(n)
-    st_view(Y, ., xvars)
-    drop = J(st_nobs(), 1, 0)
-    I = k = 0
-    i = 1
-    for (j=1; j<=N; j++) {
-        I = I + n[j]
-        i++
-        for (; i<=I; i++) {
-            k++
-            if (ltype[i]<2) drop[k] = 1
-            else            Y[k,]   = X[i,] - X[i-1,]
-        }
-    }
-    st_dropobsif(drop)
+    if (fd) _transform_fd(n, X, xvars)
+    else    _transform_pd(n, X, xvars)
 }
 
 void _transform_fd(real colvector n, real matrix X, real rowvector xvars)

@@ -25,6 +25,9 @@ Installation from GitHub:
 
 Main changes:
 
+    20apr2021 (version 1.0.2)
+    - option -fd(strict)- removed
+    
     19apr2021 (version 1.0.1):
     - option -fd(strict)- added
     

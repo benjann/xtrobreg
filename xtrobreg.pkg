@@ -3,6 +3,6 @@ d xtrobreg: Stata module providing pairwise-differences and first-differences ro
 d 
 d Author: Ben Jann, University of Bern, ben.jann@soz.unibe.ch
 d
-d Distribution-Date: 20210419
+d Distribution-Date: 20210420
 f xtrobreg.sthlp
 f xtrobreg.ado
