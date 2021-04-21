@@ -313,7 +313,7 @@
 {pmore}
     Jann, B., V. Verardi (2021). xtrobreg: Stata module providing pairwise-differences and
     first-differences robust regression estimators. Available from
-    {browse "http://github.com/benjann/xtrobreg/"}.
+    {browse "http://ideas.repec.org/c/boc/bocode/s458937.html"}.
 
 
 {marker alsosee}{...}

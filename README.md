@@ -13,6 +13,14 @@ use `xtrobreg convert` to transform the data permanently and then apply
 
 Requires: Stata 11 or newer, packages `robreg` and `moremata`
 
+To install `xtrobreg` from the SSC Archive, type
+
+    . ssc install xtrobreg, replace
+    . ssc install robreg, replace
+    . ssc install moremata, replace
+
+in Stata.
+
 ---
 
 Installation from GitHub:
