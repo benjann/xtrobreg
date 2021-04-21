@@ -1,5 +1,5 @@
 {smcl}
-{* 20apr2021}{...}
+{* 21apr2021}{...}
 {hi:help xtrobreg}{...}
 {right:{browse "http://github.com/benjann/xtrobreg/"}}
 {hline}
@@ -64,11 +64,15 @@
     {p_end}
 {synoptline}
 {pstd}
-    A panel variable (and, depending on options, a time variable) must be set; use {helpb xtset}.
+    A panel variable (and a time variable if {cmd:fd} is specified) must be
+    set; use {helpb xtset}.
     {p_end}
 {pstd}
-    {cmd:pweight}s are allowed; see {help weight}. Weights must be constant within
-    groups.
+    {it:indepvars} may contain factor variables; see {help fvvarlist}.
+    {p_end}
+{pstd}
+    {cmd:pweight}s are allowed; see {help weight}; weights must be constant within
+    groups unless {cmd:fd} is specified.
 
 
 {marker propts}{col 5}{help xtrobreg##predict_options:{it:predict_options}}{col 28}description
@@ -84,6 +88,7 @@
 {synopt:{opt e}}e_it, the idiosyncratic error
     {p_end}
 {synoptline}
+
 
 {marker tropts}{col 5}{help xtrobreg##conv_options:{it:convert_options}}{col 28}description
 {synoptline}
@@ -116,7 +121,10 @@
     {cmd:xtrobreg} works by applying {helpb robreg} to appropriately transformed
     data. {cmd:xtrobreg} restores the original data after estimation. Alternatively,
     use {cmd:xtrobreg convert} to transform the data permanently and then apply
-    {cmd:robreg} manually.
+    {cmd:robreg} manually. Note that {cmd:xtrobreg convert} also converts the 
+    time variable (if a time variable has been set; that is, the resulting
+    time variable will contain time differences) and that {cmd:xtset} will be
+    cleared. A limitation of {cmd:xtrobreg convert} is that it does not allow factor variables.
 
 {pstd}
     {cmd:xtrobreg} requires {cmd:robreg} and {cmd:moremata}. See
@@ -134,14 +142,13 @@
     {opt fd} requests that the first-differences estimator be
     computed. The default is to compute the pairwise-differences estimator. For
     least-squares regression, the pairwise-differences estimator is equal to the
-    fixed-effects estimator. Option {cmd:fd} requires a time variable to be set
-    if there are groups with more than two observations.
+    fixed-effects estimator. Option {cmd:fd} requires a time variable to be set.
 
 {pmore}
     In any case, the data from which the differences are computed will be
     restricted to (non-missing) observations satisfying the {cmd:if} and {cmd:in} qualifiers, and
     differences will be taken irrespective of whether there are gaps in the
-    time line. This means that option {cmd:fd} is different from how 
+    time line. This means that option {cmd:fd} behaves differently from how
     time-series operators work in Stata. If you are interested in a
     first-differences estimate that treats the data in a way that is consistent
     with time-series operators, you can used {helpb robreg} with time-series
@@ -169,8 +176,7 @@
     cluster-robust standard errors based on influence functions.
 
 {phang}
-    {it:robreg_options} are any other options allowed by
-    {helpb robreg}.
+    {it:robreg_options} are any other options allowed by {helpb robreg}.
 
 {marker predict_options}{...}
 {dlgtab:predict}
@@ -217,7 +223,7 @@
 
 {phang}
     {opth keep(varlist)} specifies additional variables to be kept in the converted
-    data. These variables must be constant within groups.
+    data. These variables must be constant within groups unless {cmd:fd} is specified.
 
 {phang}
     {opt clear} specifies that the data may be converted even though the dataset
