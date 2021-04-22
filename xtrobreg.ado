@@ -1,4 +1,4 @@
-*! version 1.0.3  21apr2021  Ben Jann
+*! version 1.0.4  22apr2021  Ben Jann
 
 capt findfile robreg.ado
 if _rc {
@@ -127,7 +127,7 @@ program Predict
 end
 
 program Convert, rclass
-    syntax varlist(numeric) [if] [in] [pw] [, pd fd ///
+    syntax varlist(numeric) [if] [in] [pw iw] [, pd fd ///
         Wvar(name) keep(varlist) CLuster(varname) clear ///
         gmin(numlist int max=1 >=2) gmax(numlist int max=1 >=2 miss)  ]
     local model `pd' `fd'
@@ -159,32 +159,27 @@ program Convert, rclass
     local varlist: list varlist | tvar
     Transform `varlist', touse(`touse') ivar(`ivar') nvar(`nvar') ///
         last(`last') model(`model') wvar(`wvar') cluster(`cluster') ///
-        keep(`keep') g_min(`g_min') g_avg(`g_avg') g_max(`g_max')
+        keep(`keep') g_min(`g_min') g_avg(`g_avg') g_max(`g_max') wgen
     
     // weights
-    capt confirm variable `wvar', exact
-    if _rc==1 exit _rc
-    else if _rc==0 {
-        if "`user_wvar'"=="" {
-            local user_wvar _weight
-            capt confirm new variable `user_wvar'
-            if _rc==1 exit _rc
-            else if _rc {
-                di as err "variable {bf:`user_wvar'} already defined"
-                di as err "cannot store weights"
-                exit 110
-            }
-            di as txt "(weights stored as {bf:`user_wvar'})"
+    if "`user_wvar'"=="" {
+        local user_wvar _weight
+        capt confirm new variable `user_wvar'
+        if _rc==1 exit _rc
+        else if _rc {
+            di as err "variable {bf:`user_wvar'} already defined"
+            di as err "cannot store weights"
+            exit 110
         }
-        if "`user_wvar'"!="`wvar'" {
-            rename `wvar' `user_wvar'
-        }
+        di as txt "(weights stored as {bf:`user_wvar'})"
     }
-    else local user_wvar
+    if "`user_wvar'"!="`wvar'" {
+        rename `wvar' `user_wvar'
+    }
     
     // clear xtset
     xtset, clear
-
+    
     // returns
     ret local  model "`model'"
     ret local  ivar  "`ivar'"
@@ -329,7 +324,7 @@ program _fix_m_opt
 end
 
 program Panelsetup
-    syntax varlist(fv) [if] [in] [pw], touse(str) Nvar(str) Last(str) g_avg(str) ///
+    syntax varlist(fv) [if] [in] [pw iw], touse(str) Nvar(str) Last(str) g_avg(str) ///
         model(str) [ wvar(str) cluster(str) keep(str) gmin(str) gmax(str) ]
     if "`gmin'"=="" local gmin 2
     if "`gmax'"=="" local gmax .
@@ -405,7 +400,7 @@ end
 program Transform
     syntax varlist, touse(str) nvar(str) last(str) ivar(str) ///
         model(str) g_min(str) g_avg(str) g_max(str) ///
-        [ wvar(str) cluster(str) keep(str) ]
+        [ wvar(str) cluster(str) keep(str) wgen ]
     capt confirm variable `wvar', exact
     if _rc==1      exit _rc
     else if _rc==0 local WVAR `wvar'
@@ -444,8 +439,13 @@ program Transform
         mata: xtrobreg_transform(0)
     }
     
-    // pairwise: update weights by inverse of group size if panel is unbalanced
-    if `g_min'!=`g_max' & "`model'"=="pd" {
+    // weights
+    if "`model'"=="fd" {
+        if "`wgen'"!="" & "`WVAR'"=="" {
+            qui gen byte `wvar' = 1
+        }
+    }
+    else if "`wgen'"!="" | `g_min'!=`g_max' {
         if "`WVAR'"!="" {
             qui replace `wvar' = `wvar' * (`g_avg' / `nvar')
         }

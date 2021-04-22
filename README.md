@@ -33,6 +33,11 @@ Installation from GitHub:
 
 Main changes:
 
+    22apr2021 (version 1.0.4):
+    - -xtrobreg convert- now additionally supports iweights
+    - -xtrobreg convert- now always stores a weights variable, even if all weights
+      are equal to 1
+    
     21apr2021 (version 1.0.3)
     - factor variables are now allowed (although not with -xtrobreg convert-)
     - handling of cluster() option improved; cluster() now also allowed with
