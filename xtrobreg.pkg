@@ -1,8 +1,8 @@
 v 3
 d xtrobreg: Stata module providing pairwise-differences and first-differences robust regression estimators
 d 
-d Author: Ben Jann, University of Bern, ben.jann@soz.unibe.ch
+d Author: Ben Jann, University of Bern, ben.jann@unibe.ch
 d
-d Distribution-Date: 20210422
+d Distribution-Date: 20210829
 f xtrobreg.sthlp
 f xtrobreg.ado

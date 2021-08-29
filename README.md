@@ -33,6 +33,10 @@ Installation from GitHub:
 
 Main changes:
 
+    29aug2021 (version 1.0.5):
+    - options t0() and t1() added to -xtrobreg convert-
+    - now using stable sort order when transforming data
+    
     22apr2021 (version 1.0.4):
     - -xtrobreg convert- now additionally supports iweights
     - -xtrobreg convert- now always stores a weights variable, even if all weights

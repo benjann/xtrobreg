@@ -1,5 +1,5 @@
 {smcl}
-{* 22apr2021}{...}
+{* 29aug2021}{...}
 {hi:help xtrobreg}{...}
 {right:{browse "http://github.com/benjann/xtrobreg/"}}
 {hline}
@@ -98,9 +98,13 @@
     {p_end}
 {synopt :{opt gmax(#)}}allowed maximum number of observations per group
     {p_end}
-{synopt :{opth w:var(newvarname)}}custom name for weights variable
+{synopt :{opth w:var(newvar)}}custom name for weights variable
     {p_end}
 {synopt :{opth keep(varlist)}}additional variables to be kept in the data
+    {p_end}
+{synopt :{opth t0(newvar)}}generate variable containing origin time
+    {p_end}
+{synopt :{opth t1(newvar)}}generate variable containing destination time
     {p_end}
 {synopt :{opt clear}}overwrite current data in memory
     {p_end}
@@ -227,7 +231,7 @@
     than # observations will be excluded from the converted data.
 
 {phang}
-    {opth wvar(newvarname)} specifies a custom name for the weights variable generated
+    {opth wvar(newvar)} specifies a custom name for the weights variable generated
     by {cmd:xtrobreg convert}. The default name is {cmd:_weight}. Let {it:wexp} be the 
     the weights expression that was specified when calling {cmd:xtrobreg convert} (with 
     {it:wexp}=1 if weights were omitted). Furthermore, let {it:n_g} be the number
@@ -239,6 +243,12 @@
 {phang}
     {opth keep(varlist)} specifies additional variables to be kept in the converted
     data. These variables must be constant within groups unless {cmd:fd} is specified.
+
+{phang}
+    {opth t0(newvar)} and {opth t1(newvar)} store the origin time and the
+    destination time of the differenced pair of observations, respectively. Within-group
+    observation numbers based on the current sort order of the data are used
+    if no time variable is set.
 
 {phang}
     {opt clear} specifies that the data may be converted even though the dataset
@@ -324,6 +334,8 @@
 {pstd}Macros{p_end}
 {synopt:{cmd:r(ivar)}}name of panel variable{p_end}
 {synopt:{cmd:e(tvar)}}name of (differenced) time variable (if set){p_end}
+{synopt:{cmd:e(t0)}}name of variable containing origin time{p_end}
+{synopt:{cmd:e(t1)}}name of variable containing destination time{p_end}
 {synopt:{cmd:r(wvar)}}name of weights variable{p_end}
 {synopt:{cmd:e(model)}}{cmd:pd} or {cmd:fd}{p_end}
 

@@ -1,4 +1,4 @@
-*! version 1.0.4  22apr2021  Ben Jann
+*! version 1.0.5  29aug2021  Ben Jann
 
 capt findfile robreg.ado
 if _rc {
@@ -128,7 +128,7 @@ end
 
 program Convert, rclass
     syntax varlist(numeric) [if] [in] [pw iw] [, pd fd ///
-        Wvar(name) keep(varlist) CLuster(varname) clear ///
+        Wvar(name) t0(name) t1(name) keep(varlist) CLuster(varname) clear ///
         gmin(numlist int max=1 >=2) gmax(numlist int max=1 >=2 miss)  ]
     local model `pd' `fd'
     if "`model'"=="" local model pd
@@ -141,23 +141,37 @@ program Convert, rclass
         local user_wvar `wvar'
         local wvar
     }
+    if "`t0'"!="" {
+        confirm new variable `t0'
+    }
+    if "`t1'"!="" {
+        confirm new variable `t1'
+    }
     
     // backup data
     if "`clear'"=="" {
         quietly describe
-        if r(changed) error 4
+        if r(changed) {
+            di as err "no; dataset in memory has changed since last saved"
+            di as err "specify option {bf:clear} to enforce conversion; changes will be lost"
+            exit 4
+        }
     }
     preserve
     
     // panel setup
+    tempname sortindex
+    qui gen long `sortindex' = _n
     tempname touse nvar last g_avg wvar
-    Panelsetup `varlist' `if' `in' [`weight'`exp'], touse(`touse') ///
+    Panelsetup `varlist' `if' `in' [`weight'`exp'], ///
+        touse(`touse') sortindex(`sortindex') ///
         nvar(`nvar') last(`last') g_avg(`g_avg') model(`model') wvar(`wvar') ///
-        cluster(`cluster') keep(`keep') gmin(`gmin') gmax(`gmax')
+        cluster(`cluster') gmin(`gmin') gmax(`gmax') keep(`keep')
     
     // transform data
-    local varlist: list varlist | tvar
+    local varlist: list varlist | tvar // [sic!]
     Transform `varlist', touse(`touse') ivar(`ivar') nvar(`nvar') ///
+        tvar(`tvar') t0(`t0') t1(`t1') ///
         last(`last') model(`model') wvar(`wvar') cluster(`cluster') ///
         keep(`keep') g_min(`g_min') g_avg(`g_avg') g_max(`g_max') wgen
     
@@ -184,6 +198,8 @@ program Convert, rclass
     ret local  model "`model'"
     ret local  ivar  "`ivar'"
     ret local  tvar  "`tvar'"
+    ret local  t0    "`t0'"
+    ret local  t1    "`t1'"
     ret local  wvar  "`user_wvar'"
     ret scalar N_g    = `N_g'
     ret scalar g_min  = `g_min'
@@ -217,7 +233,8 @@ program Estimate, eclass sortpreserve
     
     // panel setup
     tempname touse nvar last g_avg wvar
-    Panelsetup `varlist' `if' `in' [`weight'`exp'], touse(`touse') ///
+    Panelsetup `varlist' `if' `in' [`weight'`exp'], ///
+        touse(`touse') sortindex(`_sortindex') ///
         nvar(`nvar') last(`last') g_avg(`g_avg') model(`model') wvar(`wvar') ///
         cluster(`cluster') gmin(`gmin') gmax(`gmax')
     _nobs `touse' [`weight'`exp']
@@ -324,8 +341,9 @@ program _fix_m_opt
 end
 
 program Panelsetup
-    syntax varlist(fv) [if] [in] [pw iw], touse(str) Nvar(str) Last(str) g_avg(str) ///
-        model(str) [ wvar(str) cluster(str) keep(str) gmin(str) gmax(str) ]
+    syntax varlist(fv) [if] [in] [pw iw], touse(str) sortindex(str) ///
+        Nvar(str) Last(str) g_avg(str) model(str) ///
+        [ wvar(str) cluster(str) keep(str) gmin(str) gmax(str) ]
     if "`gmin'"=="" local gmin 2
     if "`gmax'"=="" local gmax .
     
@@ -347,7 +365,7 @@ program Panelsetup
     }
     
     // sort data
-    sort `touse' `ivar' `tvar'
+    sort `touse' `ivar' `tvar' `sortindex'
     
     // compute panel sizes
     gen byte `nvar' = 0
@@ -358,7 +376,7 @@ program Panelsetup
     if _rc==1 exit _rc
     else if _rc {
         qui replace `touse' = 0 if `nvar'<`gmin' | `nvar'>`gmax'
-        sort `touse' `ivar' `tvar'
+        sort `touse' `ivar' `tvar' `sortindex'
     }
     
     // tag last obs per panel
@@ -400,7 +418,8 @@ end
 program Transform
     syntax varlist, touse(str) nvar(str) last(str) ivar(str) ///
         model(str) g_min(str) g_avg(str) g_max(str) ///
-        [ wvar(str) cluster(str) keep(str) wgen ]
+        [ wvar(str) cluster(str) keep(str) wgen ///
+          tvar(str) t0(str) t1(str) ]
     capt confirm variable `wvar', exact
     if _rc==1      exit _rc
     else if _rc==0 local WVAR `wvar'
@@ -423,9 +442,25 @@ program Transform
         }
     }
     
+    // prepare t0 and t1
+    if "`t0'`t1'"!="" {
+        if "`tvar'"=="" {
+            // use observation number within group as tvar
+            tempname tvar
+            qui gen byte `tvar' = .
+            qui by `touse' `ivar': replace `tvar' = _n
+        }
+        if      "`t0'"=="" tempname t0 // only t1 has been specified
+        else if "`t1'"=="" tempname t1 // only t0 has been specified
+        qui gen `:type `tvar'' `t0' = .
+        qui gen `:type `tvar'' `t1' = .
+        local tvars `t0' `t1'
+    }
+    else local tvars
+    
     // drop irrelevant observations and variables
     qui keep if `touse'
-    keep `nvar' `last' `ivar' `WVAR' `varlist' `cluster' `keep'
+    keep `nvar' `last' `ivar' `WVAR' `varlist' `cluster' `keep' `tvar' `tvars'
     
     // transform data
     recast double `varlist' // [diff might require other type]
@@ -461,8 +496,8 @@ mata set matastrict on
 
 void xtrobreg_transform(real scalar fd)
 {
-    real rowvector xvars
-    real colvector n
+    real rowvector xvars, tvars
+    real colvector n, t
     real matrix    X
     
     // get data
@@ -470,20 +505,26 @@ void xtrobreg_transform(real scalar fd)
     xvars = st_varindex(tokens(st_local("varlist")))
     X = st_data(., xvars)
     
+    // t0 and t1
+    if (st_local("tvars")!="") {
+        t = st_data(., st_local("tvar"))
+        tvars = st_varindex(tokens(st_local("tvars")))
+    }
+    
     // generate pairwise differences
     if (fd) {
-        stata("drop \`last'")
-        _transform_fd(n, X, xvars)
+        _transform_fd(n, X, xvars, t, tvars)
     }
     else {
         stata("qui keep if \`last'")
         stata("qui expand \`N'")
         stata("sort \`ivar'")
-        _transform_pd(n, X, xvars)
+        _transform_pd(n, X, xvars, t, tvars)
     }
 }
 
-void _transform_fd(real colvector n, real matrix X, real rowvector xvars)
+void _transform_fd(real colvector n, real matrix X, real rowvector xvars,
+    real colvector t, real rowvector tvars)
 {
     real scalar    N, I, i, j, k
     real colvector drop
@@ -501,10 +542,22 @@ void _transform_fd(real colvector n, real matrix X, real rowvector xvars)
         i++
         for (; i<=I; i++) Y[++k,] = X[i,] - X[i-1,]
     }
+    if (length(tvars)) { // generate t0 and t1
+        st_view(Y, ., tvars)
+        I = k = 0
+        i = 1
+        for (j=1; j<=N; j++) {
+            I = I + n[j]
+            k++
+            i++
+            for (; i<=I; i++) Y[++k,] = (t[i-1], t[i])
+        }
+    }
     st_dropobsif(drop)
 }
 
-void _transform_pd(real colvector n, real matrix X, real rowvector xvars)
+void _transform_pd(real colvector n, real matrix X, real rowvector xvars,
+    real colvector t, real rowvector tvars)
 {
     real scalar    N, I, i, ii, j, k
     real rowvector xi
@@ -520,6 +573,18 @@ void _transform_pd(real colvector n, real matrix X, real rowvector xvars)
         for (; i<=I; i++) {
             xi = X[i,]
             for (ii=i+1; ii<=I; ii++) Y[++k,] = X[ii,] - xi
+        }
+    }
+    if (length(tvars)) { // generate t0 and t1
+        st_view(Y, ., tvars)
+        I = k = 0
+        i = 1
+        for (j=1; j<=N; j++) {
+            I = I + n[j]
+            for (; i<=I; i++) {
+                xi = t[i]
+                for (ii=i+1; ii<=I; ii++) Y[++k,] = (xi, t[ii])
+            }
         }
     }
 }
